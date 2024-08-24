@@ -46,7 +46,7 @@ usage: gga_codon_muts_oligo_design.py [-h] --tiles_csv TILES_CSV --mutations_to_
                                       OUTPUT_OLIGOS_FASTA
                                       [--max_representation MAX_REPRESENTATION]
                                       [--wildtype_frac WILDTYPE_FRAC]
-                                      [--avoid_motifs AVOID_MOTIFS]
+                                      [--avoid_motifs AVOID_MOTIFS [AVOID_MOTIFS ...]]
                                       [--codon_freqs_csv CODON_FREQS_CSV]
 
 Design oligos for tiles for Golden-Gate assembly codon mutagenesis. To use this script,
@@ -89,7 +89,7 @@ options:
                         For each tile, a wildtype sequence is included to an amount equal to
                         ceiling of this fraction times the number of mutations for that
                         tile. (default: 0.005)
-  --avoid_motifs AVOID_MOTIFS
+  --avoid_motifs AVOID_MOTIFS [AVOID_MOTIFS ...]
                         Avoid these motifs and reverse complements (typically restrition
                         sites). (default: ['CGTCTC'])
   --codon_freqs_csv CODON_FREQS_CSV

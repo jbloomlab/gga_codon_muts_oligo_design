@@ -355,6 +355,7 @@ if __name__ == "__main__":
         "--avoid_motifs",
         help="Avoid these motifs and reverse complements (typically restrition sites).",
         default=["CGTCTC"],
+        nargs="+",
     )
 
     parser.add_argument(

@@ -15,7 +15,7 @@ and then run with:
 python gga_codon_muts_oligo_design.py <arguments>
 ```
 
-If you want to run the test example, clone this entire repository and
+If you want to run the [test example](test_example), clone this entire repository and
 then run the command in [run_on_test_example.bash](run_on_test_example.bash), eg:
 ```
 python gga_codon_muts_oligo_design.py \
@@ -49,45 +49,49 @@ usage: gga_codon_muts_oligo_design.py [-h] --tiles_csv TILES_CSV --mutations_to_
                                       [--avoid_motifs AVOID_MOTIFS]
                                       [--codon_freqs_csv CODON_FREQS_CSV]
 
-Design oligos for tiles for Golden-Gate assembly codon mutagenesis. To use this script, first you
-need to break your gene into tiles of that can be ordered. (be sure to design tiles that will give
-good overhangs; https://pubs.acs.org/doi/10.1021/acssynbio.8b00333). You then specify those tiles
-using the '--tiles_csv' argument, and also specify the mutations to make and the representation
-(number of oligos) for each one in '--mutations_to_make_csv'. A representation of 1 means a single
-oligo for that mutation is made; larger representation values mean more oligos for each mutation
-are made which should increase its representation in the final library. See also '--
-max_representation'. If multiple oligos are made for the same mutation, when possible they use
-different codons.
+Design oligos for tiles for Golden-Gate assembly codon mutagenesis. To use this script, first
+you need to break your gene into tiles of that can be ordered (be sure to design tiles that
+will give good overhangs; https://pubs.acs.org/doi/10.1021/acssynbio.8b00333). You then
+specify those tiles using the '--tiles_csv' argument, and also specify the mutations to make
+and the representation (number of oligos) for each one in '--mutations_to_make_csv'. A
+representation of 1 means a single oligo for that mutation is made; larger representation
+values mean more oligos for each mutation are made which should increase its representation
+in the final library. See also '--max_representation'. If multiple oligos are made for the
+same mutation, when possible they use different codons.
 
 options:
   -h, --help            show this help message and exit
   --tiles_csv TILES_CSV
-                        CSV with nucleotide sequences of tiles, should have columns 'fragment'
-                        (fragment name), 'fragment_sequence' (full nucleotide sequence of
-                        fragment), and 'inframe_mutated_region' (nucleotide sequence of part of
-                        fragment that is in-frame mutated region of gene. Fragments must be in
-                        order that their 'inframe_mutation_region' sequences should be
-                        concatenated to make the full gene. Be sure to specify any restriction
-                        enzymes that will be used in '--avoid_motifs'.
+                        CSV with nucleotide sequences of tiles, should have columns
+                        'fragment' (fragment name), 'fragment_sequence' (full nucleotide
+                        sequence of fragment), and 'inframe_mutated_region' (nucleotide
+                        sequence of part of fragment that is in-frame mutated region of
+                        gene). Fragments must be in order that their
+                        'inframe_mutation_region' sequences should be concatenated to make
+                        the full gene. The overall 'fragment_sequence' will have flanking
+                        regions for Golden Gate assembly that are not present in
+                        'inframe_mutated_region'. Be sure to specify any restriction enzymes
+                        that will be used in '--avoid_motifs'.
   --mutations_to_make_csv MUTATIONS_TO_MAKE_CSV
-                        CSV with mutations to make. Must include columns 'sequential_site' (site
-                        number in 1, 2, numbering of protein), 'wildtype_aa' (parental amino acid
-                        at that site), 'mutant_aa' (the mutation to make at the site), and
-                        'representation' (how many oligos to make with that mutation; see also '--
-                        max-representation').
+                        CSV with mutations to make. Must include columns 'sequential_site'
+                        (site number in 1, 2, numbering of protein), 'wildtype_aa' (parental
+                        amino acid at that site), 'mutant_aa' (the mutation to make at the
+                        site), and 'representation' (how many oligos to make with that
+                        mutation; see also '--max-representation').
   --output_oligos_fasta OUTPUT_OLIGOS_FASTA
-                        Output FASTA file with created oligos. The oligos are named according to
-                        the sequential site that is mutated (not the reference site)
+                        Output FASTA file with created oligos. The oligos are named according
+                        to the sequential site that is mutated (not the reference site)
   --max_representation MAX_REPRESENTATION
-                        The maximum representation (number of oligos) for any mutation regardless
-                        of value given in '--mutations_to_make_csv'.
+                        The maximum representation (number of oligos) for any mutation
+                        regardless of value given in '--mutations_to_make_csv'.
   --wildtype_frac WILDTYPE_FRAC
                         For each tile, a wildtype sequence is included to an amount equal to
                         ceiling of this fraction times the number of mutations for that tile.
   --avoid_motifs AVOID_MOTIFS
-                        Avoid these motifs and reverse complements (typically restrition sites).
+                        Avoid these motifs and reverse complements (typically restrition
+                        sites).
   --codon_freqs_csv CODON_FREQS_CSV
-                        File specifying a frequency for each codon for an amino acid. Codons are
-                        chose to first prioritize the highest-frequency one for that amino acid.
-                        Must have columns 'codon', 'aa', and 'frequency'.
+                        File specifying a frequency for each codon for an amino acid. Codons
+                        are chose to first prioritize the highest-frequency one for that
+                        amino acid. Must have columns 'codon', 'aa', and 'frequency'.
 ```

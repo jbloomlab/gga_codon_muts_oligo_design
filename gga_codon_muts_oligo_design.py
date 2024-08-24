@@ -299,9 +299,11 @@ if __name__ == "__main__":
             "CSV with nucleotide sequences of tiles, should have columns 'fragment' "
             "(fragment name), 'fragment_sequence' (full nucleotide sequence of fragment)"
             ", and 'inframe_mutated_region' (nucleotide sequence of part of fragment "
-            "that is in-frame mutated region of gene. Fragments must be in order that "
+            "that is in-frame mutated region of gene). Fragments must be in order that "
             "their 'inframe_mutation_region' sequences should be concatenated to make "
-            "the full gene. Be sure to specify any restriction enzymes that will be "
+            "the full gene. The overall 'fragment_sequence' will have flanking regions "
+            " for Golden Gate assembly that are not present in 'inframe_mutated_region'. "
+            "Be sure to specify any restriction enzymes that will be "
             "used in '--avoid_motifs'."
         ),
         required=True,

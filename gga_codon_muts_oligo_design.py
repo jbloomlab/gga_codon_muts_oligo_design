@@ -290,7 +290,8 @@ if __name__ == "__main__":
             "its representation in the final library. See also '--max_representation'. "
             "If multiple oligos are made for the same mutation, when possible they "
             "use different codons."
-        )
+        ),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
     parser.add_argument(

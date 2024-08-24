@@ -49,9 +49,9 @@ usage: gga_codon_muts_oligo_design.py [-h] --tiles_csv TILES_CSV --mutations_to_
                                       [--avoid_motifs AVOID_MOTIFS]
                                       [--codon_freqs_csv CODON_FREQS_CSV]
 
-Design oligos for tiles for Golden-Gate assembly codon mutagenesis. To use this script, first
-you need to break your gene into tiles of that can be ordered (be sure to design tiles that
-will give good overhangs; https://pubs.acs.org/doi/10.1021/acssynbio.8b00333). You then
+Design oligos for tiles for Golden-Gate assembly codon mutagenesis. To use this script,
+first you need to break your gene into tiles of that can be ordered (be sure to design tiles
+that will give good overhangs; https://pubs.acs.org/doi/10.1021/acssynbio.8b00333). You then
 specify those tiles using the '--tiles_csv' argument, and also specify the mutations to make
 and the representation (number of oligos) for each one in '--mutations_to_make_csv'. A
 representation of 1 means a single oligo for that mutation is made; larger representation
@@ -71,27 +71,31 @@ options:
                         the full gene. The overall 'fragment_sequence' will have flanking
                         regions for Golden Gate assembly that are not present in
                         'inframe_mutated_region'. Be sure to specify any restriction enzymes
-                        that will be used in '--avoid_motifs'.
+                        that will be used in '--avoid_motifs'. (default: None)
   --mutations_to_make_csv MUTATIONS_TO_MAKE_CSV
                         CSV with mutations to make. Must include columns 'sequential_site'
                         (site number in 1, 2, numbering of protein), 'wildtype_aa' (parental
                         amino acid at that site), 'mutant_aa' (the mutation to make at the
                         site), and 'representation' (how many oligos to make with that
-                        mutation; see also '--max-representation').
+                        mutation; see also '--max-representation'). (default: None)
   --output_oligos_fasta OUTPUT_OLIGOS_FASTA
-                        Output FASTA file with created oligos. The oligos are named according
-                        to the sequential site that is mutated (not the reference site)
+                        Output FASTA file with created oligos. The oligos are named
+                        according to the sequential site that is mutated (not the reference
+                        site) (default: None)
   --max_representation MAX_REPRESENTATION
                         The maximum representation (number of oligos) for any mutation
-                        regardless of value given in '--mutations_to_make_csv'.
+                        regardless of value given in '--mutations_to_make_csv'. (default: 2)
   --wildtype_frac WILDTYPE_FRAC
                         For each tile, a wildtype sequence is included to an amount equal to
-                        ceiling of this fraction times the number of mutations for that tile.
+                        ceiling of this fraction times the number of mutations for that
+                        tile. (default: 0.005)
   --avoid_motifs AVOID_MOTIFS
                         Avoid these motifs and reverse complements (typically restrition
-                        sites).
+                        sites). (default: ['CGTCTC'])
   --codon_freqs_csv CODON_FREQS_CSV
                         File specifying a frequency for each codon for an amino acid. Codons
                         are chose to first prioritize the highest-frequency one for that
                         amino acid. Must have columns 'codon', 'aa', and 'frequency'.
+                        (default: https://raw.githubusercontent.com/jbloomlab/gga_codon_muts
+                        _oligo_design/main/human_codon_freq.csv)
 ```

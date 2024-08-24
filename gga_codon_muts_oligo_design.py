@@ -4,6 +4,8 @@
 
 
 import argparse
+import itertools
+import math
 import re
 import sys
 
@@ -26,6 +28,7 @@ def gga_codon_muts_oligo_design(
     max_representation,
     wildtype_frac,
     avoid_motifs,
+    codon_freqs_csv,
 ):
     """Function that implements the oligo design."""
     print(f"\nReading tiles from {tiles_csv=}")
@@ -156,6 +159,27 @@ def gga_codon_muts_oligo_design(
                 f"{motif=} is already in parent nucleotide sequence in 'tiles_csv'"
             )
 
+    print(f"Reading the codon frequencies to use from {codon_freqs_csv=}\n")
+    codon_freqs = pd.read_csv(codon_freqs_csv)[["codon", "aa", "frequency"]].assign(
+        codon=lambda x: x["codon"].str.upper(),
+        aa=lambda x: x["aa"].str.upper(),
+    )
+    assert len(codon_freqs) == 64
+    possible_codons = {
+        "".join(tup) for tup in itertools.product(["A", "C", "T", "G"], repeat=3)
+    }
+    assert set(codon_freqs["codon"]) == possible_codons, f"{codon_freqs['codon']=}\n{possible_codons=}"
+    aa_to_codon = (
+        codon_freqs
+        .sort_values("frequency", ascending=False)
+        .groupby("aa")
+        .aggregate(codons=pd.NamedAgg("codon", list))
+        ["codons"]
+        .to_dict()
+    )
+    aa_to_codon["-"] = [""]
+    assert len(aa_to_codon) == 22, f"{len(aa_to_codon)=}"
+
     # design the oligos
     oligos = []
     n_mut_oligos = 0
@@ -163,24 +187,40 @@ def gga_codon_muts_oligo_design(
         fragment = tile_tup.fragment
         start = tile_tup.sequential_start
         end = tile_tup.sequential_end
-        ntseq = list(tile_tup.inframe_mutated_region)
+        ntseq_by_codon = [
+            tile_tup.inframe_mutated_region[3 * r: 3 * r + 3]
+            for r in range(len(tile_tup.inframe_mutated_region) // 3)
+        ]
+        assert "".join(ntseq_by_codon) == tile_tup.inframe_mutated_region
         tile_muts = mutations_to_make.query(
             "(sequential_site >= @start) and (sequential_site <= @end)"
         )
+        n_tile_mut_oligos = tile_muts["representation"].sum()
+        n_tile_wt_oligos = int(math.ceil(n_tile_mut_oligos * wildtype_frac))
         print(
-            f"For tile {fragment=} making {len(tile_muts)} mutations "
-            f"with {tile_muts['representation'].sum()} oligos."
+            f"For tile {fragment=} making {len(tile_muts)} mutations with "
+            f"{n_tile_mut_oligos} oligos; also {n_tile_wt_oligos} wildtype oligos."
         )
         if len(tile_muts) == 0:
             raise ValueError(f"No mutations to make for tile {fragment=}")
+        oligos += [
+            (f"tile-{fragment}_wildtype_{i + 1}", "".join(ntseq_by_codon))
+            for i in range(n_tile_wt_oligos)
+        ]
         for mut_tup in tile_muts.itertuples():
             r = mut_tup.sequential_site - start
-            i_nt = 3 * r
-            assert i_nt + 3 <= len(ntseq)
-            wt_codon = "".join(ntseq[i_nt: i_nt + 3])
+            wt_codon = ntseq_by_codon[r]
             wt_aa = str(Bio.Seq.Seq(wt_codon).translate())
             assert mut_tup.wildtype_aa == wt_aa, f"{wt_aa=}, {wt_codon=}, {mut_tup.wildtype_aa=}"
-            pass
+            for i, mut_codon in zip(
+                range(mut_tup.representation), itertools.cycle(aa_to_codon[mut_tup.mutant_aa])
+            ):
+                oligo_name = f"tile-{fragment}_{wt_aa}{mut_tup.sequential_site}{mut_tup.mutant_aa}_{i + 1}"
+                oligo = "".join(ntseq_by_codon[: r] + [mut_codon] + ntseq_by_codon[r + 1:])
+                oligos.append((oligo_name, oligo))
+                n_mut_oligos += 1
+    assert n_mut_oligos == mutations_to_make["representation"].sum() <= len(oligos)
+    print("\nOverall designed {len(oligos)} oligos including the wildtype ones.")
 
     raise NotImplementedError
     
@@ -198,7 +238,9 @@ if __name__ == "__main__":
             "oligos) for each one in '--mutations_to_make_csv'. A representation of 1 "
             "means a single oligo for that mutation is made; larger representation "
             "values mean more oligos for each mutation are made which should increase "
-            "its representation in the final library. See also '--max_representation'."
+            "its representation in the final library. See also '--max_representation'. "
+            "If multiple oligos are made for the same mutation, when possible they "
+            "use different codons."
         )
     )
 
@@ -249,7 +291,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--wildtype_frac",
-        default=0.001,
+        default=0.005,
         help=(
             "For each tile, a wildtype sequence is included to an amount equal to "
             "ceiling of this fraction times the number of mutations for that tile."
@@ -264,12 +306,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--codon_freq_csv",
+        "--codon_freqs_csv",
         help=(
             "File specifying a frequency for each codon for an amino acid. Codons are "
             "chose to first prioritize the highest-frequency one for that amino acid. "
             "Must have columns 'codon', 'aa', and 'frequency'."
         ),
+        default="https://raw.githubusercontent.com/jbloomlab/gga_codon_muts_oligo_design/main/human_codon_freq.csv",
     )
 
     if len(sys.argv) == 1:

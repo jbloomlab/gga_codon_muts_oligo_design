@@ -21,6 +21,41 @@ if sys.version_info < MIN_PYTHON_VERSION:
     )
 
 
+def remove_motif(oligo, motif, aa_to_codon):
+    """Remove motif from oligo while keeping protein sequence."""
+    assert len(oligo) % 3 == 0
+    if motif not in oligo:
+        return oligo
+    prot = str(Bio.Seq.Seq(oligo).translate())
+
+    while motif in oligo:
+        i = oligo.index(motif)
+        for icodon in range(i // 3, i // 3 + 1 + len(motif) // 3):
+            aa = prot[icodon]
+            codon = oligo[icodon * 3: icodon * 3 + 3]
+            other_codons = [c for c in aa_to_codon[aa] if c != codon]
+            for other_codon in other_codons:
+                oligo = oligo[: icodon * 3] + other_codon + oligo[icodon * 3 + 3: ]
+                if oligo[i: i + len(motif)] != motif:
+                    break
+
+            if oligo[i: i + len(motif)] != motif:
+                break
+
+        if oligo[i: i + len(motif)] == motif:
+            raise ValueError(f"Cannot remove {motif=} from {oligo=} at {i=}")
+
+        if (motif in oligo) and (oligo.index(motif) <= i):
+            raise ValueError(
+                f"Removing {motif=} at {i=} from {oligo=} created earlier motif"
+            )
+
+    assert motif not in oligo
+    assert prot == str(Bio.Seq.Seq(oligo).translate())
+
+    return oligo
+
+
 def gga_codon_muts_oligo_design(
     tiles_csv,
     mutations_to_make_csv,
@@ -220,10 +255,21 @@ def gga_codon_muts_oligo_design(
                 oligos.append((oligo_name, oligo))
                 n_mut_oligos += 1
     assert n_mut_oligos == mutations_to_make["representation"].sum() <= len(oligos)
-    print("\nOverall designed {len(oligos)} oligos including the wildtype ones.")
+    print(f"\nOverall designed {len(oligos)} oligos including the wildtype ones.")
 
-    raise NotImplementedError
-    
+    print("\nNow removing motifs to avoid:")
+    nremoved = 0
+    for motif in avoid_motifs:
+        for i, (oligo_name, oligo) in enumerate(oligos):
+            if motif in oligo:
+                nremoved += 1
+                new_oligo = remove_motif(oligo, motif, aa_to_codon)
+                oligos[i] = (oligo_name, new_oligo)
+        print(f"Removed {motif=} from {nremoved} oligos.")
+
+    print(f"\nWriting the oligos to {output_oligos_fasta=}")
+    with open(output_oligos_fasta, "w") as f:
+        f.write("".join(f">{oligo_name}\n{oligo}\n" for (oligo_name, oligo) in oligos))
 
 
 if __name__ == "__main__":
@@ -231,7 +277,7 @@ if __name__ == "__main__":
         description=(
             "Design oligos for tiles for Golden-Gate assembly codon mutagenesis. "
             "To use this script, first you need to break your gene into tiles of "
-            "that can be ordered. (be sure to design tiles that will give good "
+            "that can be ordered (be sure to design tiles that will give good "
             "overhangs; https://pubs.acs.org/doi/10.1021/acssynbio.8b00333). "
             "You then specify those tiles using the '--tiles_csv' argument, and "
             "also specify the mutations to make and the representation (number of "
@@ -249,7 +295,7 @@ if __name__ == "__main__":
         help=(
             "CSV with nucleotide sequences of tiles, should have columns 'fragment' "
             "(fragment name), 'fragment_sequence' (full nucleotide sequence of fragment)"
-            ", and 'inframe_mutated_region' (nucleotide sequence of part of fragment ",
+            ", and 'inframe_mutated_region' (nucleotide sequence of part of fragment "
             "that is in-frame mutated region of gene. Fragments must be in order that "
             "their 'inframe_mutation_region' sequences should be concatenated to make "
             "the full gene. Be sure to specify any restriction enzymes that will be "

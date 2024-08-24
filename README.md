@@ -11,13 +11,13 @@ this is all done using the command-line arguments shown in the usage below.
 
 To run it, just download [gga_codon_muts_oligo_design.py](gga_codon_muts_oligo_design.py)
 and then run with:
-```bash
+```
 python gga_codon_muts_oligo_design.py <arguments>
 ```
 
 If you want to run the test example, clone this entire repository and
 then run the command in [run_on_test_example.bash](run_on_test_example.bash), eg:
-```bash
+```
 python gga_codon_muts_oligo_design.py \
     --tiles_csv test_example/KP311_GAA_assembly_fragments.csv \
     --mutations_to_make_csv test_example/mutations_to_make.csv \
@@ -40,7 +40,7 @@ This script requires that you have installed:
 The command-line usage of the script can be seen by running the command
 `python gga_codon_muts_oligo_design.py`, and is shown below:
 
-```bash
+```
 usage: gga_codon_muts_oligo_design.py [-h] --tiles_csv TILES_CSV --mutations_to_make_csv
                                       MUTATIONS_TO_MAKE_CSV --output_oligos_fasta
                                       OUTPUT_OLIGOS_FASTA

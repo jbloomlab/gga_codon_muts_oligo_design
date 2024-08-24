@@ -147,7 +147,7 @@ def gga_codon_muts_oligo_design(
         [m.upper() for m in avoid_motifs]
         + [str(Bio.Seq.Seq(m).reverse_complement()) for m in avoid_motifs]
     )
-    print(f"We will avoid the following motifs:\n{avoid_motifs}")
+    print(f"We will avoid the following motifs:\n{avoid_motifs}\n")
     assert all(re.fullmatch("[ATCG]+", m) for m in avoid_motifs)
     nt_from_tiles = "".join(tiles["inframe_mutated_region"])
     for motif in avoid_motifs:
@@ -155,6 +155,32 @@ def gga_codon_muts_oligo_design(
             raise ValueError(
                 f"{motif=} is already in parent nucleotide sequence in 'tiles_csv'"
             )
+
+    # design the oligos
+    oligos = []
+    n_mut_oligos = 0
+    for tile_tup in tiles.itertuples():
+        fragment = tile_tup.fragment
+        start = tile_tup.sequential_start
+        end = tile_tup.sequential_end
+        ntseq = list(tile_tup.inframe_mutated_region)
+        tile_muts = mutations_to_make.query(
+            "(sequential_site >= @start) and (sequential_site <= @end)"
+        )
+        print(
+            f"For tile {fragment=} making {len(tile_muts)} mutations "
+            f"with {tile_muts['representation'].sum()} oligos."
+        )
+        if len(tile_muts) == 0:
+            raise ValueError(f"No mutations to make for tile {fragment=}")
+        for mut_tup in tile_muts.itertuples():
+            r = mut_tup.sequential_site - start
+            i_nt = 3 * r
+            assert i_nt + 3 <= len(ntseq)
+            wt_codon = "".join(ntseq[i_nt: i_nt + 3])
+            wt_aa = str(Bio.Seq.Seq(wt_codon).translate())
+            assert mut_tup.wildtype_aa == wt_aa, f"{wt_aa=}, {wt_codon=}, {mut_tup.wildtype_aa=}"
+            pass
 
     raise NotImplementedError
     
@@ -204,7 +230,10 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--output_oligos_fasta",
-        help="Output FASTA file with created oligos.",
+        help=(
+            "Output FASTA file with created oligos. The oligos are named according "
+            "to the sequential site that is mutated (not the reference site)"
+        ),
         required=True,
     )
 
@@ -232,6 +261,15 @@ if __name__ == "__main__":
         "--avoid_motifs",
         help="Avoid these motifs and reverse complements (typically restrition sites).",
         default=["CGTCTC"],
+    )
+
+    parser.add_argument(
+        "--codon_freq_csv",
+        help=(
+            "File specifying a frequency for each codon for an amino acid. Codons are "
+            "chose to first prioritize the highest-frequency one for that amino acid. "
+            "Must have columns 'codon', 'aa', and 'frequency'."
+        ),
     )
 
     if len(sys.argv) == 1:

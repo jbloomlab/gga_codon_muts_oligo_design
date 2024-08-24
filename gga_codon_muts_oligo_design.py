@@ -77,14 +77,17 @@ def gga_codon_muts_oligo_design(
                 lambda row: row["fragment_sequence"].find(row["inframe_mutated_region"]),
                 axis=1,
             ),
-            upstream_flank=lambda x: x["fragment_sequence"].str.slice(
-                start=0, stop=x["inframe_start"]
+            upstream_flank=lambda x: x.apply(
+                lambda row: row["fragment_sequence"][0: row["inframe_start"]],
+                axis=1,
             ),
-            downstream_flank=lambda x: x["fragment_sequence"].str.slice(
-                start=x["inframe_start"] + x["inframe_mutated_region"].map(len)
-            )
+            downstream_flank=lambda x: x.apply(
+                lambda row: row["fragment_sequence"][
+                    row["inframe_start"] + len(row["inframe_mutated_region"]):
+                ],
+                axis=1,
+            ),
         )
-        .drop(columns=["inframe_start"])
     )
     assert len(tiles) == tiles["fragment"].nunique(), "tiles not uniquely named"
 
@@ -222,6 +225,8 @@ def gga_codon_muts_oligo_design(
         fragment = tile_tup.fragment
         start = tile_tup.sequential_start
         end = tile_tup.sequential_end
+        upstream_flank = tile_tup.upstream_flank.lower()
+        downstream_flank = tile_tup.downstream_flank.lower()
         ntseq_by_codon = [
             tile_tup.inframe_mutated_region[3 * r: 3 * r + 3]
             for r in range(len(tile_tup.inframe_mutated_region) // 3)
@@ -239,7 +244,10 @@ def gga_codon_muts_oligo_design(
         if len(tile_muts) == 0:
             raise ValueError(f"No mutations to make for tile {fragment=}")
         oligos += [
-            (f"tile-{fragment}_wildtype_{i + 1}", "".join(ntseq_by_codon))
+            (
+                f"tile-{fragment}_wildtype_{i + 1}",
+                upstream_flank + "".join(ntseq_by_codon) + downstream_flank
+            )
             for i in range(n_tile_wt_oligos)
         ]
         for mut_tup in tile_muts.itertuples():
@@ -252,20 +260,15 @@ def gga_codon_muts_oligo_design(
             ):
                 oligo_name = f"tile-{fragment}_{wt_aa}{mut_tup.sequential_site}{mut_tup.mutant_aa}_{i + 1}"
                 oligo = "".join(ntseq_by_codon[: r] + [mut_codon] + ntseq_by_codon[r + 1:])
-                oligos.append((oligo_name, oligo))
+                for motif in avoid_motifs:
+                    if motif in oligo:
+                        oligo = remove_motif(oligo, motif, aa_to_codon)
+                oligos.append((oligo_name, upstream_flank + oligo + downstream_flank))
                 n_mut_oligos += 1
     assert n_mut_oligos == mutations_to_make["representation"].sum() <= len(oligos)
     print(f"\nOverall designed {len(oligos)} oligos including the wildtype ones.")
-
-    print("\nNow removing motifs to avoid:")
-    nremoved = 0
-    for motif in avoid_motifs:
-        for i, (oligo_name, oligo) in enumerate(oligos):
-            if motif in oligo:
-                nremoved += 1
-                new_oligo = remove_motif(oligo, motif, aa_to_codon)
-                oligos[i] = (oligo_name, new_oligo)
-        print(f"Removed {motif=} from {nremoved} oligos.")
+    nunique = len(set(tup[1] for tup in oligos))
+    print(f"{nunique} of these oligos have unique sequences.")
 
     print(f"\nWriting the oligos to {output_oligos_fasta=}")
     with open(output_oligos_fasta, "w") as f:

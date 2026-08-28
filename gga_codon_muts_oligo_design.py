@@ -64,6 +64,7 @@ def gga_codon_muts_oligo_design(
     wildtype_frac,
     avoid_motifs,
     codon_freqs_csv,
+    initial_sequential_site=1,
 ):
     """Function that implements the oligo design."""
     print(f"\nReading tiles from {tiles_csv=}")
@@ -93,7 +94,7 @@ def gga_codon_muts_oligo_design(
 
     records = []
     prot_from_tiles = []
-    sequential_start = 1
+    sequential_start = initial_sequential_site
     for tup in tiles.itertuples():
         fragment_prot = str(Bio.Seq.Seq(tup.inframe_mutated_region).translate())
         if len(tup.inframe_mutated_region) % 3 != 0:
@@ -116,8 +117,9 @@ def gga_codon_muts_oligo_design(
         records.append((tup.fragment, fragment_prot, sequential_start, sequential_end))
         sequential_start = sequential_end + 1
     prot_from_tiles = "".join(prot_from_tiles)
-    assert len(prot_from_tiles) == sequential_end, f"{len(prot_from_tiles)=}, {sequential_end=}"
-    print(f"Tiles encode protein of {len(prot_from_tiles)} residues:\n{prot_from_tiles}\n")
+    expected_sequential_end = initial_sequential_site + len(prot_from_tiles) - 1
+    assert sequential_end == expected_sequential_end, f"{sequential_end=}, {expected_sequential_end=}, {len(prot_from_tiles)=}"
+    print(f"Tiles encode protein of {len(prot_from_tiles)} residues (sites {initial_sequential_site}-{sequential_end}):\n{prot_from_tiles}\n")
     tiles = tiles.merge(
         pd.DataFrame(
             records,
@@ -152,17 +154,18 @@ def gga_codon_muts_oligo_design(
             "'mutations_to_make_csv' has multiple 'wildtype_aa' for some 'sequential_site'"
         )
     prot_to_make = prot_to_make.set_index("sequential_site")["wildtype_aa"].to_dict()
+    max_sequential_site = initial_sequential_site + len(prot_from_tiles) - 1
     for r, aa in prot_to_make.items():
-        if r > len(prot_from_tiles):
+        if r < initial_sequential_site or r > max_sequential_site:
             raise ValueError(
-                f"'sequential_site' {r} in 'mutations_to_make_csv' it outside range of "
-                "protein specified in 'tiles_csv'"
+                f"'sequential_site' {r} in 'mutations_to_make_csv' is outside range of "
+                f"protein specified in 'tiles_csv' ({initial_sequential_site} to {max_sequential_site})"
             )
-        if prot_from_tiles[r - 1] != aa:
+        if prot_from_tiles[r - initial_sequential_site] != aa:
             raise ValueError(
                 f"At 'sequential_site' {r}, mismatch in 'wildtype_aa' in "
                 "'mutations_to_make_csv' and protein encoded in 'tiles_csv': "
-                f"{aa} versus {prot_from_tiles[r - 1]}"
+                f"{aa} versus {prot_from_tiles[r - initial_sequential_site]}"
             )
     print("Representation values for the mutations to make:")
     print(
@@ -366,6 +369,18 @@ if __name__ == "__main__":
             "Must have columns 'codon', 'aa', and 'frequency'."
         ),
         default="https://raw.githubusercontent.com/jbloomlab/gga_codon_muts_oligo_design/main/human_codon_freq.csv",
+    )
+
+    parser.add_argument(
+        "--initial_sequential_site",
+        type=int,
+        default=1,
+        help=(
+            "The sequential site number to assign to the first amino acid in the "
+            "inframe_mutated_region of the first tile. Default is 1 for standard "
+            "1-based sequential numbering. Use a different value (e.g., 35) when "
+            "starting mutagenesis at a later sequential site."
+        ),
     )
 
     if len(sys.argv) == 1:

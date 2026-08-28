@@ -227,7 +227,7 @@ def gga_codon_muts_oligo_design(
     for tile_tup in tiles.itertuples():
         fragment = tile_tup.fragment
         start = tile_tup.sequential_start
-        end = tile_tup.sequential_end
+        end = tile_tup.sequential_end  # noqa: F841 — used as @end in pandas query below
         upstream_flank = tile_tup.upstream_flank.lower()
         downstream_flank = tile_tup.downstream_flank.lower()
         ntseq_by_codon = [
